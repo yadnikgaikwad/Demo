@@ -1,36 +1,29 @@
-const FIREWORKS_API_KEY = import.meta.env.VITE_FIREWORKS_API_KEY;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export async function getBotResponse(userMessage: string): Promise<string> {
   try {
-    const response = await fetch("https://api.fireworks.ai/inference/v1/chat/completions", {
+    const response = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${FIREWORKS_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "accounts/fireworks/models/kimi-k2-instruct",
-        messages: [
-          { role: "system", content: "You are a helpful AI assistant that helps people with posture correction and product selection." },
-          { role: "user", content: userMessage }
-        ],
-        temperature: 0.7,
-        max_tokens: 300,
+        message: userMessage,
+        // Optionally add conversation_id and user_context if you want session support
       }),
     });
 
     const data = await response.json();
-    console.log("Fireworks API response:", data); // For debugging
 
-    if (data.choices && data.choices.length > 0) {
-      return data.choices[0].message.content.trim();
+    if (data.status === "success") {
+      return data.response;
     } else if (data.error) {
-      return `API Error: ${data.error.message || JSON.stringify(data.error)}`;
+      return `API Error: ${data.error}`;
     } else {
       return "I'm sorry, I couldn't generate a response. Please try again.";
     }
   } catch (error) {
-    console.error("Fireworks API error:", error);
+    console.error("Backend API error:", error);
     return "Oops! Something went wrong connecting to AI.";
   }
 } 

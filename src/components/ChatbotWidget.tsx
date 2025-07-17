@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,9 +13,7 @@ export const ChatbotWidget = () => {
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isBotTyping, setIsBotTyping] = useState(false);
-  const [botTypingText, setBotTypingText] = useState("");
-  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isBotThinking, setIsBotThinking] = useState(false);
 
   // Tooltip interval logic
   useEffect(() => {
@@ -53,9 +51,7 @@ export const ChatbotWidget = () => {
   };
 
   const defaultMessages = [
-    "Hi there! 👋 I'm your AI assistant.",
-    "Ask me anything about posture correction, our products, or how to get started.",
-    "Need help choosing a product? I'm here to guide you!"
+    "Hi there! 👋 How can i Assist you today?"
   ];
 
   // Handle sending a message
@@ -65,44 +61,16 @@ export const ChatbotWidget = () => {
     setInputValue("");
     setTimeout(() => {
       setMessageHistory((prev) => [...prev, { text: trimmed, sender: 'user', timestamp: Date.now() }]);
-      // Add typing indicator
-      setMessageHistory((prev) => [
-        ...prev,
-        { text: 'Bot is typing...', sender: 'typing', timestamp: Date.now() }
-      ]);
-      // Use chatService to get bot response
+      setIsBotThinking(true);
       (async () => {
         const botReply = await getBotResponse(trimmed);
-        setIsBotTyping(true);
-        setBotTypingText("");
-        // Animate character-by-character
-        let i = 0;
-        if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
-        typingIntervalRef.current = setInterval(() => {
-          i++;
-          setBotTypingText(botReply.slice(0, i));
-          if (i >= botReply.length) {
-            if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
-            setTimeout(() => {
-              setMessageHistory((prev) => {
-                // Remove the last 'typing' message if it exists
-                const last = prev[prev.length - 1];
-                let newHistory = prev;
-                if (last && last.sender === 'typing') {
-                  newHistory = prev.slice(0, -1);
-                }
-                return [
-                  ...newHistory,
-                  { text: botReply, sender: 'bot', timestamp: Date.now() }
-                ];
-              });
-              setIsBotTyping(false);
-              setBotTypingText("");
-            }, 200); // Short pause after animation
-          }
-        }, 18); // Typing speed (ms per character)
+        setIsBotThinking(false);
+        setMessageHistory((prev) => [
+          ...prev,
+          { text: botReply, sender: 'bot', timestamp: Date.now() }
+        ]);
       })();
-    }, 200); // 200ms delay before showing user message
+    }, 200);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -119,7 +87,7 @@ export const ChatbotWidget = () => {
   // Scroll to bottom when messageHistory or typing changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messageHistory, show, botTypingText]);
+  }, [messageHistory, show]);
 
   return (
     <div className="fixed bottom-6 right-20 sm:bottom-8 sm:right-8 z-50 font-sans flex flex-col items-end p-0 chatbot-widget-container">
@@ -145,7 +113,7 @@ export const ChatbotWidget = () => {
               {/* Render default bot messages */}
               {defaultMessages.map((message, index) => (
                 <div key={"default-" + index} className="flex">
-                  <div className="bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-none max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e]">
+                  <div className="bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-none max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e] pop-in">
                     {message}
                   </div>
                 </div>
@@ -162,11 +130,10 @@ export const ChatbotWidget = () => {
                 >
                   <div
                     className={
-                      msg.sender === 'user'
+                      (msg.sender === 'user'
                         ? 'bg-gradient-to-br from-[#3a3b41] to-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-br-md max-w-[85%] text-sm leading-relaxed shadow-sm ml-auto border border-[#35373e]'
-                        : msg.sender === 'bot'
-                          ? 'bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-md max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e]'
-                          : 'bg-[#282a31] text-[#b0b3bb] italic p-3 rounded-2xl rounded-bl-md max-w-[85%] text-sm leading-relaxed shadow-sm opacity-80 border border-[#35373e]'
+                        : 'bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-md max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e]')
+                      + ' pop-in'
                     }
                   >
                     {msg.text}
@@ -178,13 +145,16 @@ export const ChatbotWidget = () => {
                   </div>
                 </div>
               ))}
-              {/* Animated bot typing bubble */}
-              {isBotTyping && (
+              {/* Messenger-style typing indicator */}
+              {isBotThinking && (
                 <div className="flex">
-                 <div className="bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-md max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e]">
-                   {botTypingText}
-                   <span className="animate-pulse">▍</span>
-                 </div>
+                  <div className="bg-[#23252b] text-[#e4e6eb] p-3 rounded-2xl rounded-bl-md max-w-[85%] text-sm leading-relaxed shadow-sm border border-[#35373e] pop-in">
+                    <span className="typing-indicator">
+                      <span className="dot" />
+                      <span className="dot" />
+                      <span className="dot" />
+                    </span>
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -215,8 +185,8 @@ export const ChatbotWidget = () => {
               </div>
               {/* File upload and attachment bar (mock, for visual match) */}
               <div className="flex items-center mt-3 text-[#b0b3bb] text-xs gap-2">
-                <span className="flex items-center gap-1"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M16.5 6.5l-9 9" stroke="#b0b3bb" strokeWidth="1.5" strokeLinecap="round"/><rect x="3" y="3" width="18" height="18" rx="4" stroke="#b0b3bb" strokeWidth="1.5"/></svg> Advertising materials.pdf</span>
-                <span className="ml-auto">75% uploaded</span>
+                <span className="flex items-center gap-1"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M16.5 6.5l-9 9" stroke="#b0b3bb" strokeWidth="1.5" strokeLinecap="round"/><rect x="3" y="3" width="18" height="18" rx="4" stroke="#b0b3bb" strokeWidth="1.5"/></svg> Upload Files</span>
+                <span className="ml-auto">Format PDF, Doc, Img</span>
               </div>
             </div>
           </div>
